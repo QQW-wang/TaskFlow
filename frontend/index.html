@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="TaskFlow：FastAPI + SQLAlchemy + PostgreSQL 异步任务管理练习项目">
+  <title>TaskFlow · 个人任务管理</title>
+  <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body>
+  <div class="background-glow" aria-hidden="true"></div>
+
+  <!-- 登录 / 注册 -->
+  <section id="authView" class="auth-view">
+    <div class="auth-brand">
+      <a class="brand" href="#" aria-label="TaskFlow 首页">
+        <span class="brand-mark">T</span>
+        <span>TaskFlow</span>
+      </a>
+
+      <div class="brand-copy">
+        <span class="eyebrow">FASTAPI LEARNING PROJECT</span>
+        <h1>把待办事项，<br>变成看得见的进度。</h1>
+        <p>
+          一个前后端分离的异步任务管理项目。后端使用 FastAPI、SQLAlchemy 2.0
+          与 PostgreSQL，前端保持轻量，专注练习接口设计与身份认证。
+        </p>
+      </div>
+
+      <ul class="feature-list">
+        <li><span>01</span> JWT 注册与登录</li>
+        <li><span>02</span> 异步 CRUD、筛选与分页</li>
+        <li><span>03</span> Swagger 自动接口文档</li>
+      </ul>
+
+      <div class="brand-footer">FastAPI · SQLAlchemy 2.0 · PostgreSQL · Async</div>
+    </div>
+
+    <div class="auth-panel">
+      <div class="auth-card">
+        <div class="auth-card-head">
+          <span class="eyebrow">WELCOME</span>
+          <h2 id="authTitle">欢迎回来</h2>
+          <p id="authSubtitle">登录后继续管理你的任务。</p>
+        </div>
+
+        <div class="auth-tabs" role="tablist" aria-label="登录或注册">
+          <button class="auth-tab is-active" data-auth-tab="login" type="button" role="tab">登录</button>
+          <button class="auth-tab" data-auth-tab="register" type="button" role="tab">注册</button>
+        </div>
+
+        <form id="loginForm" class="auth-form" novalidate>
+          <label class="field">
+            <span>邮箱</span>
+            <input name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+          </label>
+          <label class="field">
+            <span>密码</span>
+            <input name="password" type="password" autocomplete="current-password" placeholder="至少 8 位" required>
+          </label>
+          <p class="form-error" id="loginError" role="alert"></p>
+          <button class="btn btn-primary btn-block" type="submit">登录</button>
+        </form>
+
+        <form id="registerForm" class="auth-form is-hidden" novalidate>
+          <label class="field">
+            <span>邮箱</span>
+            <input name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+          </label>
+          <label class="field">
+            <span>用户名</span>
+            <input name="username" type="text" autocomplete="username" placeholder="2-50 位，支持中英文" required>
+          </label>
+          <label class="field">
+            <span>密码</span>
+            <input name="password" type="password" autocomplete="new-password" placeholder="至少 8 位" required>
+          </label>
+          <label class="field">
+            <span>确认密码</span>
+            <input name="confirm" type="password" autocomplete="new-password" placeholder="再次输入密码" required>
+          </label>
+          <p class="form-error" id="registerError" role="alert"></p>
+          <button class="btn btn-primary btn-block" type="submit">创建账号</button>
+        </form>
+
+        <p class="auth-note">数据只保存在你本地的 PostgreSQL 中，不会上传到任何地方。</p>
+      </div>
+
+      <a class="docs-link" href="http://127.0.0.1:8000/docs" target="_blank" rel="noreferrer">
+        打开 API 文档 <span aria-hidden="true">↗</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- 任务面板 -->
+  <section id="appView" class="app-view is-hidden">
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <a class="brand brand-small" href="#" aria-label="TaskFlow 首页">
+          <span class="brand-mark">T</span>
+          <span>TaskFlow</span>
+        </a>
+        <p class="sidebar-caption">个人任务管理</p>
+      </div>
+
+      <nav class="filter-nav" aria-label="任务筛选">
+        <p class="sidebar-label">任务视图</p>
+        <button class="filter-btn is-active" data-filter="all" type="button">
+          <span class="filter-dot dot-all"></span>
+          <span>全部任务</span>
+          <span class="filter-count" data-count="all">0</span>
+        </button>
+        <button class="filter-btn" data-filter="todo" type="button">
+          <span class="filter-dot dot-todo"></span>
+          <span>待开始</span>
+          <span class="filter-count" data-count="todo">0</span>
+        </button>
+        <button class="filter-btn" data-filter="in_progress" type="button">
+          <span class="filter-dot dot-progress"></span>
+          <span>进行中</span>
+          <span class="filter-count" data-count="in_progress">0</span>
+        </button>
+        <button class="filter-btn" data-filter="done" type="button">
+          <span class="filter-dot dot-done"></span>
+          <span>已完成</span>
+          <span class="filter-count" data-count="done">0</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-progress">
+        <div class="progress-head">
+          <span>本期完成度</span>
+          <strong id="sidebarRate">0%</strong>
+        </div>
+        <div class="progress-track">
+          <span id="sidebarProgress"></span>
+        </div>
+        <p id="sidebarProgressText">添加第一个任务，开始今天的计划。</p>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="user-chip">
+          <span class="avatar" id="userAvatar">U</span>
+          <div class="user-meta">
+            <strong id="userName">用户</strong>
+            <span id="userEmail">—</span>
+          </div>
+        </div>
+        <button class="logout-btn" id="logoutBtn" type="button">退出</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow" id="todayLabel">今天</p>
+          <h2 id="pageGreeting">今天要做点什么？</h2>
+        </div>
+        <div class="topbar-actions">
+          <label class="search-box">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="m20 20-3.5-3.5"></path>
+            </svg>
+            <input id="searchInput" type="search" placeholder="搜索标题或描述..." aria-label="搜索任务">
+          </label>
+          <a class="btn btn-ghost docs-button" href="http://127.0.0.1:8000/docs" target="_blank" rel="noreferrer">API 文档</a>
+          <button class="btn btn-primary" id="newTaskBtn" type="button">
+            <span aria-hidden="true">＋</span> 新建任务
+          </button>
+        </div>
+      </header>
+
+      <section class="stats-grid" aria-label="任务统计">
+        <article class="stat-card">
+          <div class="stat-top"><span>全部任务</span><span class="stat-icon">Σ</span></div>
+          <strong id="statTotal">0</strong>
+          <p>所有进行中的计划</p>
+        </article>
+        <article class="stat-card">
+          <div class="stat-top"><span>待开始</span><span class="stat-icon stat-icon-todo">○</span></div>
+          <strong id="statTodo">0</strong>
+          <p>还没迈出第一步</p>
+        </article>
+        <article class="stat-card">
+          <div class="stat-top"><span>进行中</span><span class="stat-icon stat-icon-progress">◐</span></div>
+          <strong id="statProgress">0</strong>
+          <p>正在专注处理</p>
+        </article>
+        <article class="stat-card stat-card-accent">
+          <div class="stat-top"><span>完成率</span><span class="stat-icon stat-icon-done">✓</span></div>
+          <strong id="statRate">0%</strong>
+          <div class="mini-progress"><span id="statProgressBar"></span></div>
+        </article>
+      </section>
+
+      <section class="list-section">
+        <div class="list-head">
+          <div>
+            <h3 id="listTitle">全部任务</h3>
+            <p id="listMeta">共 0 件</p>
+          </div>
+          <span class="list-tip">点击左侧圆点即可标记完成</span>
+        </div>
+
+        <div id="taskList" class="task-list" aria-live="polite"></div>
+
+        <div id="emptyState" class="empty-state is-hidden">
+          <div class="empty-mark">✓</div>
+          <h3>这里还很安静</h3>
+          <p id="emptyText">创建第一个任务，把今天想做的事写下来。</p>
+          <button class="btn btn-primary" id="emptyCreateBtn" type="button">创建第一个任务</button>
+        </div>
+
+        <div class="pagination" id="pagination">
+          <button class="btn btn-ghost" id="prevPage" type="button">上一页</button>
+          <span id="pageInfo">第 1 / 1 页</span>
+          <button class="btn btn-ghost" id="nextPage" type="button">下一页</button>
+        </div>
+      </section>
+    </main>
+  </section>
+
+  <!-- 新建 / 编辑任务弹窗 -->
+  <div class="modal-layer is-hidden" id="taskModal" role="dialog" aria-modal="true" aria-labelledby="taskModalTitle">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <span class="eyebrow">TASK</span>
+          <h3 id="taskModalTitle">新建任务</h3>
+        </div>
+        <button class="icon-btn" type="button" data-close-modal aria-label="关闭弹窗">×</button>
+      </div>
+
+      <form id="taskForm" class="task-form" novalidate>
+        <input id="taskId" type="hidden">
+        <label class="field field-full">
+          <span>任务标题</span>
+          <input id="taskTitle" type="text" maxlength="200" placeholder="例如：完成 FastAPI 练习项目" required>
+        </label>
+        <label class="field field-full">
+          <span>描述（可选）</span>
+          <textarea id="taskDescription" maxlength="5000" rows="3" placeholder="补充一些细节，让未来的自己知道要做什么。"></textarea>
+        </label>
+        <label class="field">
+          <span>状态</span>
+          <select id="taskStatus">
+            <option value="todo">待开始</option>
+            <option value="in_progress">进行中</option>
+            <option value="done">已完成</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>优先级</span>
+          <select id="taskPriority">
+            <option value="low">低</option>
+            <option value="medium" selected>中</option>
+            <option value="high">高</option>
+          </select>
+        </label>
+        <label class="field field-full">
+          <span>截止时间（可选）</span>
+          <input id="taskDueDate" type="datetime-local">
+        </label>
+        <p class="form-error" id="taskError" role="alert"></p>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" type="button" data-close-modal>取消</button>
+          <button class="btn btn-primary" id="taskSubmitBtn" type="submit">保存任务</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="./js/app.js"></script>
+</body>
+</html>

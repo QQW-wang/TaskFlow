@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# 测试 / 工具
+.pytest_cache/
+pytest-cache-files-*/
+.coverage
+htmlcov/
+.deps/
+.tmp/
+.edgeprofile/
+
+# 编辑器
+.idea/
+.vscode/
+*.swp
+
+# 数据库 / 系统
+*.sqlite3
+pgdata/
+.DS_Store
+Thumbs.db
+
+# 前端
+node_modules/
+
+# 构建产物 / 日志
+*.zip
+*.log
+dist/
+build/
